@@ -1,0 +1,299 @@
+{
+  "schema": 1,
+  "run": {
+    "id": "2026-10-26-erp-pilot-check",
+    "title": {
+      "ru": "Проверка ERP Pilot",
+      "en": "ERP Pilot check"
+    },
+    "mode": "semi-automatic",
+    "depth": "normal",
+    "started_at": "2026-10-26T18:17:47+00:00",
+    "finished_at": null,
+    "repo": "AndreyVomKeg/trid-erp-supabase",
+    "branch": "pilot/2026-10-26-erp-pilot-check",
+    "pr_url": null,
+    "dashboard_url": null,
+    "constraints": [
+      "PR-only",
+      "миграции применяются только из main"
+    ]
+  },
+  "phases": [
+    {
+      "id": "preflight",
+      "status": "done",
+      "started_at": "2026-10-26T18:17:47+00:00",
+      "finished_at": "2026-10-26T18:17:48+00:00",
+      "note": {
+        "ru": [
+          "Настраиваю репозиторий и дашборд",
+          "Дальше бриф станет требованиями, и ни одно не потеряется до конца."
+        ],
+        "en": [
+          "Setting up the repo and the dashboard",
+          "Next, the brief becomes requirements, and none of them gets lost before the end."
+        ]
+      }
+    },
+    {
+      "id": "requirements",
+      "status": "done",
+      "started_at": "2026-10-26T18:17:48+00:00",
+      "finished_at": "2026-10-26T18:17:48+00:00",
+      "note": {
+        "ru": [
+          "Превращаю бриф в нумерованные требования",
+          "Каждое R-n получит источник и дойдёт до приёмки."
+        ],
+        "en": [
+          "Turning the brief into numbered requirements",
+          "Every R-item gets a source and will reach acceptance."
+        ]
+      }
+    },
+    {
+      "id": "briefing",
+      "status": "done",
+      "started_at": "2026-10-26T18:17:48+00:00",
+      "finished_at": "2026-10-26T18:17:48+00:00",
+      "note": {
+        "ru": [
+          "Уточняю неясные требования",
+          "Вопросы привязаны к номерам R-n."
+        ],
+        "en": [
+          "Clarifying unclear requirements",
+          "Questions are tied to R-numbers."
+        ]
+      }
+    },
+    {
+      "id": "spec",
+      "status": "done",
+      "started_at": "2026-10-26T18:17:48+00:00",
+      "finished_at": "2026-10-26T18:17:48+00:00",
+      "note": {
+        "ru": [
+          "Пишу спецификацию",
+          "У каждого требования появляется решение S-n."
+        ],
+        "en": [
+          "Writing the spec",
+          "Every requirement gets a decision S-n."
+        ]
+      }
+    },
+    {
+      "id": "plan",
+      "status": "active",
+      "started_at": "2026-10-26T18:17:48+00:00",
+      "finished_at": null,
+      "note": {
+        "ru": [
+          "Собираю план и тикеты",
+          "Вертикальные T-n с зависимостями и критериями приёмки."
+        ],
+        "en": [
+          "Building the plan and tickets",
+          "Vertical T-items with dependencies and acceptance criteria."
+        ]
+      }
+    },
+    {
+      "id": "development",
+      "status": "ahead",
+      "started_at": null,
+      "finished_at": null,
+      "note": {
+        "ru": [
+          "Реализую тикеты",
+          "Коммиты по T-n, один PR на прогон."
+        ],
+        "en": [
+          "Implementing tickets",
+          "Commits per T-item, one PR per run."
+        ]
+      }
+    },
+    {
+      "id": "code_review",
+      "status": "ahead",
+      "started_at": null,
+      "finished_at": null,
+      "note": {
+        "ru": [
+          "Ревью по двум осям",
+          "Стандарты репозитория и соответствие спеке."
+        ],
+        "en": [
+          "Two-axis code review",
+          "Repo standards and spec compliance."
+        ]
+      }
+    },
+    {
+      "id": "acceptance",
+      "status": "ahead",
+      "started_at": null,
+      "finished_at": null,
+      "note": {
+        "ru": [
+          "Приёмка",
+          "Каждое R-n проверено или снято с причиной."
+        ],
+        "en": [
+          "Acceptance",
+          "Every R-item verified or dropped with a reason."
+        ]
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "R-1",
+      "text": "Список Aufträge фильтруется по складу (Lager) с сохранением фильтра в URL",
+      "source": "бриф, абзац 2",
+      "kind": "functional",
+      "status": "planned",
+      "spec": "S-1",
+      "tickets": [
+        "T-1"
+      ],
+      "note": null,
+      "reason": null
+    },
+    {
+      "id": "R-2",
+      "text": "Фильтр по складу доступен только ролям с правом lager:read",
+      "source": "бриф, абзац 3",
+      "kind": "security",
+      "status": "planned",
+      "spec": "S-2",
+      "tickets": [
+        "T-2"
+      ],
+      "note": null,
+      "reason": null
+    },
+    {
+      "id": "R-3",
+      "text": "Склад по умолчанию берётся из профиля сотрудника",
+      "source": "ответ на Briefing R-1",
+      "kind": "proposed",
+      "status": "planned",
+      "spec": "S-1",
+      "tickets": [
+        "T-1"
+      ],
+      "note": null,
+      "reason": null
+    }
+  ],
+  "tickets": [
+    {
+      "id": "T-1",
+      "title": "Фильтр Lager в AuftraegeList + параметр URL",
+      "requirements": [
+        "R-1",
+        "R-3"
+      ],
+      "depends_on": [],
+      "acceptance": [
+        "фильтр переживает перезагрузку"
+      ],
+      "status": "in_progress",
+      "url": null
+    },
+    {
+      "id": "T-2",
+      "title": "Проверка права lager:read в RLS-политике и UI",
+      "requirements": [
+        "R-2"
+      ],
+      "depends_on": [
+        "T-1"
+      ],
+      "acceptance": [],
+      "status": "todo",
+      "url": null
+    }
+  ],
+  "log": [
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "run created"
+    },
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "run updated: constraints"
+    },
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "R-1 added"
+    },
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "R-2 added"
+    },
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "R-3 added"
+    },
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "T-1 added for R-1, R-3"
+    },
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "T-2 added for R-2"
+    },
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "R-1 updated -> planned"
+    },
+    {
+      "at": "2026-10-26T18:17:47+00:00",
+      "phase": "preflight",
+      "event": "R-2 updated -> planned"
+    },
+    {
+      "at": "2026-10-26T18:17:48+00:00",
+      "phase": "preflight",
+      "event": "R-3 updated -> planned"
+    },
+    {
+      "at": "2026-10-26T18:17:48+00:00",
+      "phase": "preflight",
+      "event": "phase preflight done"
+    },
+    {
+      "at": "2026-10-26T18:17:48+00:00",
+      "phase": "requirements",
+      "event": "phase requirements done"
+    },
+    {
+      "at": "2026-10-26T18:17:48+00:00",
+      "phase": "briefing",
+      "event": "phase briefing done"
+    },
+    {
+      "at": "2026-10-26T18:17:48+00:00",
+      "phase": "spec",
+      "event": "phase spec done"
+    },
+    {
+      "at": "2026-10-26T18:17:48+00:00",
+      "phase": "plan",
+      "event": "T-1 -> in_progress"
+    }
+  ]
+}

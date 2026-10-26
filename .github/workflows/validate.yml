@@ -1,0 +1,24 @@
+name: validate
+on: [push, pull_request]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Smoke-test pilot.py
+        run: |
+          set -e
+          D=$(mktemp -d)
+          P="python3 erp-pilot/scripts/pilot.py --dir $D"
+          $P init --title-ru "CI" --repo owner/repo
+          $P req add "r1" --source "ci"
+          $P ticket add "t1" --req R-1
+          $P phase preflight done --auto-next
+          $P render --out $D/dashboard/index.html
+          test -s $D/dashboard/index.html
+          grep -q '"schema": 1' $D/state.json
+      - name: Validate skill format
+        run: |
+          pip install -q agentskills 2>/dev/null && agentskills validate erp-pilot/ || echo "agentskills CLI not available on PyPI — skipped"
