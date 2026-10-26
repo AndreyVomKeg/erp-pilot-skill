@@ -19,6 +19,17 @@ jobs:
           $P render --out $D/dashboard/index.html
           test -s $D/dashboard/index.html
           grep -q '"schema": 1' $D/state.json
-      - name: Validate skill format
+      - name: Check SKILL.md frontmatter
         run: |
-          pip install -q agentskills 2>/dev/null && agentskills validate erp-pilot/ || echo "agentskills CLI not available on PyPI — skipped"
+          python3 - <<'PY'
+          import re, sys, pathlib
+          t = pathlib.Path("erp-pilot/SKILL.md").read_text(encoding="utf-8")
+          assert t.startswith("---\n"), "SKILL.md must start with frontmatter"
+          fm = t.split("---\n")[1]
+          name = re.search(r"^name:\s*(\S+)", fm, re.M).group(1)
+          assert name == "erp-pilot", f"name {name} != directory erp-pilot"
+          assert re.search(r'^description:\s*".{1,1024}"\s*$', fm, re.M), "description must be a quoted string <= 1024 chars"
+          for ref in ["references/phases.md","references/dashboard.md","scripts/pilot.py","scripts/README.md","assets/dashboard/index.html"]:
+              assert pathlib.Path("erp-pilot", ref).exists(), f"missing {ref}"
+          print("frontmatter ok")
+          PY
