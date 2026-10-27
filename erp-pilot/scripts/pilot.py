@@ -2,16 +2,25 @@
 """ERP Pilot run state CLI (stdlib only).
 
 State lives in <dir>/state.json. Every command rewrites the file atomically and
-appends a log entry. Run `pilot.py -h` or see scripts/README.md.
+appends a log entry. Guards (see scripts/README.md):
+
+* phases open strictly in order; `done` runs the traceability check of that phase;
+* `requirements` and `acceptance` cannot be skipped; other phases only while active/next;
+* requirement statuses move forward only (open -> specified -> planned -> implemented
+  -> verified), `dropped` needs --reason, going back needs --reopen and is journaled;
+* `check` also reads requirements.md / spec.md / acceptance.md for matching R-n / S-n rows.
+
+Run `pilot.py -h`.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 PHASES = [
@@ -24,6 +33,7 @@ PHASES = [
     "code_review",
     "acceptance",
 ]
+UNSKIPPABLE = {"requirements", "acceptance"}
 
 PHASE_NOTES = {
     "preflight": {
@@ -65,13 +75,16 @@ PHASE_NOTES = {
 }
 
 REQ_STATUSES = ["open", "specified", "planned", "implemented", "verified", "dropped"]
+REQ_ORDER = {s: i for i, s in enumerate(REQ_STATUSES[:-1])}  # dropped is out of band
 REQ_KINDS = ["functional", "data", "ui", "security", "ops", "proposed"]
 TICKET_STATUSES = ["todo", "in_progress", "review", "done", "dropped"]
 MODES = ["manual", "semi-automatic", "automatic"]
 DEPTHS = ["light", "normal", "deep"]
+HELPER_ROLES = ["interview", "tickets", "review", "diagnose", "design"]
 
 HERE = Path(__file__).resolve().parent
 TEMPLATE = HERE.parent / "assets" / "dashboard" / "index.html"
+ARTIFACTS = ("requirements.md", "spec.md", "plan.md", "acceptance.md")
 
 
 def now_iso() -> str:
@@ -87,7 +100,7 @@ class State:
     def __init__(self, path: Path):
         self.path = path
         if not path.exists():
-            die(f"{path} not found; run `pilot.py init --dir {path.parent}` first")
+            die(f"{path} not found; run `pilot.py --dir {path.parent} init` first")
         self.data = json.loads(path.read_text(encoding="utf-8"))
 
     def save(self) -> None:
@@ -123,6 +136,94 @@ class State:
         nums = [int(i["id"].split("-")[1]) for i in self.data[coll] if i["id"].startswith(prefix + "-")]
         return f"{prefix}-{(max(nums) + 1) if nums else 1}"
 
+    def recompute_req(self, rid: str) -> None:
+        """Derive implemented/planned from the live tickets of a requirement."""
+        req = self.find("requirements", rid)
+        if req["status"] in ("verified", "dropped"):
+            return
+        tickets = [self.find("tickets", t) for t in req["tickets"]]
+        live = [t for t in tickets if t["status"] != "dropped"]
+        if live and all(t["status"] == "done" for t in live):
+            req["status"] = "implemented"
+        elif live:
+            if req["status"] in ("open", "specified", "implemented"):
+                req["status"] = "planned"
+        elif req["status"] in ("planned", "implemented"):
+            # every ticket dropped -> requirement is back to specified (or open)
+            req["status"] = "specified" if req["spec"] else "open"
+
+
+# ---------- traceability ----------
+
+def _artifact(d: Path, name: str) -> str | None:
+    p = d / name
+    return p.read_text(encoding="utf-8") if p.exists() else None
+
+
+def traceability_problems(data: dict, phase: str = "acceptance", run_dir: Path | None = None) -> list[str]:
+    """Return human-readable gaps for the given phase. Empty list == OK.
+
+    Phase thresholds (cumulative): requirements -> every R-n has source;
+    spec -> every live R-n has spec; plan -> every live R-n has a live ticket;
+    development -> no ticket in todo/in_progress; code_review -> all tickets done|dropped;
+    acceptance -> every R-n verified|dropped(with reason).
+    Markdown artifacts (if present in run_dir) must mention the ids too.
+    """
+    rank = PHASES.index(phase)
+    out: list[str] = []
+    reqs = data["requirements"]
+    tickets = {t["id"]: t for t in data["tickets"]}
+
+    req_md = spec_md = acc_md = None
+    if run_dir is not None:
+        req_md = _artifact(run_dir, "requirements.md")
+        spec_md = _artifact(run_dir, "spec.md")
+        acc_md = _artifact(run_dir, "acceptance.md")
+
+    if rank >= PHASES.index("requirements") and not reqs:
+        out.append("no requirements recorded (req add)")
+
+    for r in reqs:
+        rid = r["id"]
+        if r["status"] == "dropped":
+            if not r.get("reason"):
+                out.append(f"{rid} dropped without reason")
+            continue
+        if rank >= PHASES.index("requirements"):
+            if not r.get("source"):
+                out.append(f"{rid} has no source")
+            if req_md is not None and not re.search(rf"^\|\s*{re.escape(rid)}\s*\|", req_md, re.M):
+                out.append(f"{rid} has no row in requirements.md")
+        if rank >= PHASES.index("spec"):
+            if not r["spec"]:
+                out.append(f"{rid} has no spec (S-n)")
+            elif spec_md is not None and not re.search(
+                    rf"^#{{2,4}}\s+{re.escape(r['spec'])}\b.*\b{re.escape(rid)}\b", spec_md, re.M):
+                out.append(f"{rid}: spec.md has no heading '{r['spec']} — {rid}'")
+        if rank >= PHASES.index("plan"):
+            live = [t for t in r["tickets"] if tickets.get(t, {}).get("status") != "dropped"]
+            if not live:
+                out.append(f"{rid} has no live tickets")
+        if rank >= PHASES.index("acceptance"):
+            if r["status"] != "verified":
+                out.append(f"{rid} is {r['status']}, expected verified or dropped")
+            if acc_md is not None and not re.search(rf"^\|\s*{re.escape(rid)}\s*\|", acc_md, re.M):
+                out.append(f"{rid} has no row in acceptance.md")
+
+    if rank >= PHASES.index("plan"):
+        for t in data["tickets"]:
+            if not t["requirements"]:
+                out.append(f"{t['id']} is not linked to any requirement")
+    if rank >= PHASES.index("development"):
+        for t in data["tickets"]:
+            if t["status"] in ("todo", "in_progress"):
+                out.append(f"{t['id']} is {t['status']}, expected review, done or dropped")
+    if rank >= PHASES.index("code_review"):
+        for t in data["tickets"]:
+            if t["status"] not in ("done", "dropped"):
+                out.append(f"{t['id']} is {t['status']}, expected done or dropped")
+    return out
+
 
 # ---------- commands ----------
 
@@ -148,6 +249,7 @@ def cmd_init(a: argparse.Namespace) -> None:
             "pr_url": None,
             "dashboard_url": None,
             "constraints": [],
+            "helpers": {},
         },
         "phases": [
             {"id": p, "status": "ahead", "started_at": None, "finished_at": None,
@@ -160,11 +262,13 @@ def cmd_init(a: argparse.Namespace) -> None:
     }
     data["phases"][0].update(status="active", started_at=started)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    for name in ("requirements.md", "spec.md", "plan.md", "acceptance.md"):
+    today = date.today().isoformat()
+    for name in ARTIFACTS:
         src = HERE.parent / "templates" / name
         dst = d / name
         if src.exists() and not dst.exists():
-            dst.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+            text = src.read_text(encoding="utf-8").replace("<run-id>", run_id).replace("<дата>", today)
+            dst.write_text(text, encoding="utf-8")
     print(f"created {path}")
 
 
@@ -186,6 +290,16 @@ def cmd_set(a: argparse.Namespace) -> None:
     if a.constraint:
         run.setdefault("constraints", []).extend(a.constraint)
         changed.append("constraints")
+    if a.helper:
+        helpers = run.setdefault("helpers", {})
+        for item in a.helper:
+            if "=" not in item:
+                die(f"--helper expects role=skill-name, got {item!r}")
+            role, name = item.split("=", 1)
+            if role not in HELPER_ROLES:
+                die(f"unknown helper role {role!r}; valid: {', '.join(HELPER_ROLES)}")
+            helpers[role] = name.strip() or None
+        changed.append("helpers")
     if not changed:
         die("nothing to set")
     s.log("run updated: " + ", ".join(changed))
@@ -193,37 +307,94 @@ def cmd_set(a: argparse.Namespace) -> None:
     print("ok: " + ", ".join(changed))
 
 
+def _print_problems(label: str, problems: list[str]) -> None:
+    print(f"{label}:", file=sys.stderr)
+    for p in problems:
+        print("  - " + p, file=sys.stderr)
+
+
 def cmd_phase(a: argparse.Namespace) -> None:
     s = State(Path(a.dir) / "state.json")
     p = s.phase(a.phase)
     idx = PHASES.index(a.phase)
     t = now_iso()
+    active = s.active_phase_id()
+    event = f"phase {a.phase} {a.action}"
+
     if a.action == "start":
         if idx > 0 and s.data["phases"][idx - 1]["status"] not in ("done", "skipped"):
             die(f"previous phase {PHASES[idx - 1]} is not done/skipped")
-        active = s.active_phase_id()
         if active and active != a.phase:
             die(f"phase {active} is still active; finish it first")
+        if p["status"] in ("done", "skipped"):
+            if not a.reopen:
+                die(f"phase {a.phase} is already {p['status']}; use --reopen to open it again")
+            p["finished_at"] = None
+            event = f"phase {a.phase} reopened"
+            if a.phase == "acceptance":
+                s.data["run"]["finished_at"] = None
         p.update(status="active", started_at=p["started_at"] or t)
-    elif a.action in ("done", "skip"):
-        if p["status"] != "active" and a.action == "done":
+
+    elif a.action == "done":
+        if p["status"] != "active":
             die(f"phase {a.phase} is not active")
-        p.update(status="done" if a.action == "done" else "skipped", finished_at=t)
-        if a.phase == "acceptance" and a.action == "done":
-            problems = traceability_problems(s.data)
-            if problems:
-                die("acceptance cannot close:\n  " + "\n  ".join(problems))
+        problems = traceability_problems(s.data, a.phase, Path(a.dir))
+        if problems and not a.force:
+            _print_problems(f"{a.phase} cannot close ({len(problems)} gap(s))", problems)
+            print("pilot: fix the gaps or pass --force (journaled; needs the user's explicit word)",
+                  file=sys.stderr)
+            sys.exit(2)
+        if problems:
+            event += f" FORCED with {len(problems)} gap(s): " + "; ".join(problems)
+        p.update(status="done", finished_at=t)
+        if a.phase == "acceptance":
             s.data["run"]["finished_at"] = t
-        if idx + 1 < len(PHASES) and a.auto_next:
-            nxt = s.data["phases"][idx + 1]
-            nxt.update(status="active", started_at=t)
+
+    elif a.action == "skip":
+        if a.phase in UNSKIPPABLE:
+            die(f"phase {a.phase} cannot be skipped")
+        is_next = (active is None and (idx == 0 or s.data["phases"][idx - 1]["status"] in ("done", "skipped")))
+        if p["status"] != "active" and not (p["status"] == "ahead" and is_next):
+            die(f"phase {a.phase} is {p['status']}; only the active or the next phase can be skipped")
+        p.update(status="skipped", started_at=p["started_at"] or t, finished_at=t)
+
+    if a.action in ("done", "skip") and a.auto_next and idx + 1 < len(PHASES):
+        nxt = s.data["phases"][idx + 1]
+        nxt.update(status="active", started_at=t)
     if a.note_ru:
         p["note"]["ru"] = [a.note_ru, a.note_ru_sub or p["note"]["ru"][1]]
     if a.note_en:
         p["note"]["en"] = [a.note_en, a.note_en_sub or p["note"]["en"][1]]
-    s.log(f"phase {a.phase} {a.action}", a.phase)
+    s.log(event, a.phase)
     s.save()
     print(f"ok: {a.phase} -> {p['status']}")
+
+
+def _set_req_status(s: State, r: dict, new: str, a: argparse.Namespace) -> None:
+    cur = r["status"]
+    if new == cur:
+        return
+    if new == "dropped":
+        if not (a.reason or r.get("reason")):
+            die("dropped requires --reason")
+        r["status"] = "dropped"
+        return
+    backwards = cur == "dropped" or REQ_ORDER[new] < REQ_ORDER[cur]
+    if backwards:
+        if not a.reopen:
+            die(f"{r['id']}: {cur} -> {new} goes backwards; pass --reopen (journaled)")
+        if cur == "dropped":
+            r["reason"] = None
+        s.log(f"{r['id']} reopened: {cur} -> {new}")
+    if new in ("implemented", "verified"):
+        if not r["spec"]:
+            die(f"{r['id']}: cannot be {new} without a spec (S-n)")
+        live = [t for t in r["tickets"] if s.find("tickets", t)["status"] != "dropped"]
+        if not live:
+            die(f"{r['id']}: cannot be {new} without a live ticket")
+    if new == "verified" and any(s.find("tickets", t)["status"] not in ("done", "dropped") for t in r["tickets"]):
+        die(f"{r['id']}: cannot be verified while a ticket is not done/dropped")
+    r["status"] = new
 
 
 def cmd_req(a: argparse.Namespace) -> None:
@@ -238,10 +409,6 @@ def cmd_req(a: argparse.Namespace) -> None:
         print(rid)
     elif a.req_cmd == "set":
         r = s.find("requirements", a.id)
-        if a.status:
-            if a.status == "dropped" and not (a.reason or r.get("reason")):
-                die("dropped requires --reason")
-            r["status"] = a.status
         if a.spec:
             r["spec"] = a.spec
             if r["status"] == "open":
@@ -251,14 +418,15 @@ def cmd_req(a: argparse.Namespace) -> None:
                 s.find("tickets", t)
                 if t not in r["tickets"]:
                     r["tickets"].append(t)
-            if r["status"] in ("open", "specified"):
-                r["status"] = "planned"
+            s.recompute_req(a.id)
         if a.text:
             r["text"] = a.text
         if a.reason:
             r["reason"] = a.reason
         if a.kind:
             r["kind"] = a.kind
+        if a.status:
+            _set_req_status(s, r, a.status, a)
         s.log(f"{a.id} updated -> {r['status']}")
         print(f"ok: {a.id} {r['status']}")
     elif a.req_cmd == "note":
@@ -290,20 +458,15 @@ def cmd_ticket(a: argparse.Namespace) -> None:
             req = s.find("requirements", r)
             if tid not in req["tickets"]:
                 req["tickets"].append(tid)
-            if req["status"] in ("open", "specified"):
-                req["status"] = "planned"
+            s.recompute_req(r)
         s.log(f"{tid} added for {', '.join(a.req)}")
         print(tid)
     elif a.ticket_cmd == "set":
         t = s.find("tickets", a.id)
         if a.status:
             t["status"] = a.status
-            if a.status == "done":
-                for rid in t["requirements"]:
-                    req = s.find("requirements", rid)
-                    all_done = all(s.find("tickets", x)["status"] in ("done", "dropped") for x in req["tickets"])
-                    if all_done and req["status"] in ("planned", "specified", "open"):
-                        req["status"] = "implemented"
+            for rid in t["requirements"]:
+                s.recompute_req(rid)
         if a.url:
             t["url"] = a.url
         if a.title:
@@ -324,32 +487,10 @@ def cmd_log(a: argparse.Namespace) -> None:
     print("ok")
 
 
-def traceability_problems(data: dict, phase: str = "acceptance") -> list[str]:
-    out: list[str] = []
-    for r in data["requirements"]:
-        if r["status"] == "dropped":
-            if not r.get("reason"):
-                out.append(f"{r['id']} dropped without reason")
-            continue
-        if phase in ("spec", "plan", "development", "code_review", "acceptance") and not r["spec"]:
-            out.append(f"{r['id']} has no spec (S-n)")
-        if phase in ("plan", "development", "code_review", "acceptance") and not r["tickets"]:
-            out.append(f"{r['id']} has no tickets")
-        if phase == "acceptance" and r["status"] != "verified":
-            out.append(f"{r['id']} is {r['status']}, expected verified or dropped")
-    if phase in ("development", "code_review", "acceptance"):
-        for t in data["tickets"]:
-            if phase == "acceptance" and t["status"] not in ("done", "dropped"):
-                out.append(f"{t['id']} is {t['status']}, expected done or dropped")
-            if not t["requirements"]:
-                out.append(f"{t['id']} is not linked to any requirement")
-    return out
-
-
 def cmd_check(a: argparse.Namespace) -> None:
     s = State(Path(a.dir) / "state.json")
     phase = a.phase or s.active_phase_id() or "acceptance"
-    problems = traceability_problems(s.data, phase)
+    problems = traceability_problems(s.data, phase, Path(a.dir))
     if problems:
         print(f"{len(problems)} problem(s) for phase {phase}:")
         for p in problems:
@@ -383,7 +524,8 @@ def cmd_status(a: argparse.Namespace) -> None:
         print(f"  {mark} {p['id']:13} {p['status']}")
     rs = s.data["requirements"]
     ts = s.data["tickets"]
-    print(f"requirements: {len(rs)}  tickets: {len(ts)}  dashboard: {run['dashboard_url'] or '-'}")
+    helpers = ", ".join(f"{k}={v}" for k, v in (run.get("helpers") or {}).items() if v) or "-"
+    print(f"requirements: {len(rs)}  tickets: {len(ts)}  dashboard: {run['dashboard_url'] or '-'}  helpers: {helpers}")
 
 
 # ---------- parser ----------
@@ -411,12 +553,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--mode", choices=MODES)
     p.add_argument("--depth", choices=DEPTHS)
     p.add_argument("--constraint", action="append", help="repeatable repository constraint")
+    p.add_argument("--helper", action="append",
+                   help=f"role=skill-name, repeatable; roles: {', '.join(HELPER_ROLES)}")
     p.set_defaults(fn=cmd_set)
 
-    p = sub.add_parser("phase", help="start / done / skip a phase")
+    p = sub.add_parser("phase", help="start / done / skip a phase (guarded)")
     p.add_argument("phase", choices=PHASES)
     p.add_argument("action", choices=["start", "done", "skip"])
     p.add_argument("--auto-next", action="store_true", help="activate the next phase after done/skip")
+    p.add_argument("--force", action="store_true", help="close despite traceability gaps (journaled)")
+    p.add_argument("--reopen", action="store_true", help="start a phase that is already done/skipped")
     p.add_argument("--note-ru")
     p.add_argument("--note-ru-sub")
     p.add_argument("--note-en")
@@ -437,6 +583,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--text")
     q.add_argument("--kind", choices=REQ_KINDS)
     q.add_argument("--reason", help="required for --status dropped")
+    q.add_argument("--reopen", action="store_true", help="allow a backwards status move (journaled)")
     q = rs.add_parser("note")
     q.add_argument("id")
     q.add_argument("text")
@@ -463,7 +610,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("message")
     p.set_defaults(fn=cmd_log)
 
-    p = sub.add_parser("check", help="traceability check; exit 1 on gaps")
+    p = sub.add_parser("check", help="traceability check (state + markdown artifacts); exit 1 on gaps")
     p.add_argument("--phase", choices=PHASES)
     p.set_defaults(fn=cmd_check)
 
