@@ -124,7 +124,7 @@
         inPhase:'в «%s»', req:'Требования', tickets:'Тикеты', run:'Прогон', log:'Журнал',
         thId:'№', thText:'Требование', thSt:'Статус', thTk:'Тикеты', thTitle:'Задача', thReq:'Треб.',
         empty:'Пока пусто — появится на этапе «%s».', repo:'Репозиторий', branch:'Ветка', pr:'PR',
-        dash:'Дашборд', constraints:'Ограничения', finished:'завершён', mode:'Режим', depth:'Глубина',
+        dash:'Дашборд', constraints:'Ограничения', helpers:'Навыки проекта', finished:'завершён', mode:'Режим', depth:'Глубина',
         phase:{preflight:'Preflight',requirements:'Requirements',briefing:'Briefing',spec:'Spec',plan:'Plan',development:'Development',code_review:'Code review',acceptance:'Acceptance'},
         mode_v:{manual:'Ручной','semi-automatic':'Полуавтомат',automatic:'Автомат'},
         depth_v:{light:'Лёгкая глубина',normal:'Обычная глубина',deep:'Глубокая проверка'},
@@ -134,7 +134,7 @@
         inPhase:'in “%s”', req:'Requirements', tickets:'Tickets', run:'Run', log:'Log',
         thId:'#', thText:'Requirement', thSt:'Status', thTk:'Tickets', thTitle:'Ticket', thReq:'Req.',
         empty:'Nothing yet — appears in the “%s” phase.', repo:'Repository', branch:'Branch', pr:'PR',
-        dash:'Dashboard', constraints:'Constraints', finished:'finished', mode:'Mode', depth:'Depth',
+        dash:'Dashboard', constraints:'Constraints', helpers:'Project skills', finished:'finished', mode:'Mode', depth:'Depth',
         phase:{preflight:'Preflight',requirements:'Requirements',briefing:'Briefing',spec:'Spec',plan:'Plan',development:'Development',code_review:'Code review',acceptance:'Acceptance'},
         mode_v:{manual:'Manual','semi-automatic':'Semi-automatic',automatic:'Automatic'},
         depth_v:{light:'Light depth',normal:'Normal depth',deep:'Deep check'},
@@ -202,7 +202,8 @@
       '<dt>'+T.branch+'</dt><dd>'+esc(run.branch||'—')+'</dd>'+
       '<dt>'+T.pr+'</dt><dd>'+link(run.pr_url)+'</dd>'+
       '<dt>'+T.dash+'</dt><dd>'+link(run.dashboard_url)+'</dd>'+
-      '<dt>'+T.constraints+'</dt><dd>'+((run.constraints||[]).map(esc).join('; ')||'—')+'</dd>';
+      '<dt>'+T.constraints+'</dt><dd>'+((run.constraints||[]).map(esc).join('; ')||'—')+'</dd>'+
+      '<dt>'+T.helpers+'</dt><dd>'+(Object.keys(run.helpers||{}).filter(function(k){return run.helpers[k];}).map(function(k){return esc(k+' = '+run.helpers[k]);}).join('; ')||'—')+'</dd>';
 
     var lg=(S.log||[]).slice().reverse();
     document.getElementById('log').innerHTML = lg.length ? '<ul>'+lg.map(function(e){return '<li><time>'+esc(dateLabel(e.at))+'</time><span>'+esc(e.phase?'['+e.phase+'] ':'')+esc(e.event)+'</span></li>';}).join('')+'</ul>' : '<div class="empty">—</div>';

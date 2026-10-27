@@ -1,30 +1,34 @@
 {
   "schema": 1,
   "run": {
-    "id": "2026-10-26-erp-pilot-check",
+    "id": "2026-10-26-lager-filter",
     "title": {
-      "ru": "Проверка ERP Pilot",
-      "en": "ERP Pilot check"
+      "ru": "Фильтр заказов по складу",
+      "en": "Warehouse filter for orders"
     },
     "mode": "semi-automatic",
     "depth": "normal",
-    "started_at": "2026-10-26T18:17:47+00:00",
+    "started_at": "2026-10-27T04:21:59+00:00",
     "finished_at": null,
-    "repo": "AndreyVomKeg/trid-erp-supabase",
-    "branch": "pilot/2026-10-26-erp-pilot-check",
+    "repo": "acme/erp",
+    "branch": "pilot/2026-10-26-lager-filter",
     "pr_url": null,
     "dashboard_url": null,
     "constraints": [
-      "PR-only",
-      "миграции применяются только из main"
-    ]
+      "PR-only, squash-merge",
+      "миграции применяет администратор после слияния",
+      "UI-тексты DE и RU"
+    ],
+    "helpers": {
+      "review": "my-review-skill"
+    }
   },
   "phases": [
     {
       "id": "preflight",
       "status": "done",
-      "started_at": "2026-10-26T18:17:47+00:00",
-      "finished_at": "2026-10-26T18:17:48+00:00",
+      "started_at": "2026-10-27T04:21:59+00:00",
+      "finished_at": "2026-10-27T04:21:59+00:00",
       "note": {
         "ru": [
           "Настраиваю репозиторий и дашборд",
@@ -39,8 +43,8 @@
     {
       "id": "requirements",
       "status": "done",
-      "started_at": "2026-10-26T18:17:48+00:00",
-      "finished_at": "2026-10-26T18:17:48+00:00",
+      "started_at": "2026-10-27T04:21:59+00:00",
+      "finished_at": "2026-10-27T04:22:42+00:00",
       "note": {
         "ru": [
           "Превращаю бриф в нумерованные требования",
@@ -55,8 +59,8 @@
     {
       "id": "briefing",
       "status": "done",
-      "started_at": "2026-10-26T18:17:48+00:00",
-      "finished_at": "2026-10-26T18:17:48+00:00",
+      "started_at": "2026-10-27T04:22:42+00:00",
+      "finished_at": "2026-10-27T04:22:42+00:00",
       "note": {
         "ru": [
           "Уточняю неясные требования",
@@ -71,8 +75,8 @@
     {
       "id": "spec",
       "status": "done",
-      "started_at": "2026-10-26T18:17:48+00:00",
-      "finished_at": "2026-10-26T18:17:48+00:00",
+      "started_at": "2026-10-27T04:22:42+00:00",
+      "finished_at": "2026-10-27T04:22:42+00:00",
       "note": {
         "ru": [
           "Пишу спецификацию",
@@ -87,7 +91,7 @@
     {
       "id": "plan",
       "status": "active",
-      "started_at": "2026-10-26T18:17:48+00:00",
+      "started_at": "2026-10-27T04:22:42+00:00",
       "finished_at": null,
       "note": {
         "ru": [
@@ -152,7 +156,7 @@
   "requirements": [
     {
       "id": "R-1",
-      "text": "Список Aufträge фильтруется по складу (Lager) с сохранением фильтра в URL",
+      "text": "Список заказов (Aufträge) фильтруется по складу (Lager), выбранный фильтр сохраняется в URL",
       "source": "бриф, абзац 2",
       "kind": "functional",
       "status": "planned",
@@ -160,12 +164,12 @@
       "tickets": [
         "T-1"
       ],
-      "note": null,
+      "note": "Ответ пользователя: по умолчанию — склад из профиля сотрудника; если в профиле пусто — все склады",
       "reason": null
     },
     {
       "id": "R-2",
-      "text": "Фильтр по складу доступен только ролям с правом lager:read",
+      "text": "Фильтр по складу виден только ролям с правом lager:read",
       "source": "бриф, абзац 3",
       "kind": "security",
       "status": "planned",
@@ -182,7 +186,7 @@
       "source": "ответ на Briefing R-1",
       "kind": "proposed",
       "status": "planned",
-      "spec": "S-1",
+      "spec": "S-3",
       "tickets": [
         "T-1"
       ],
@@ -193,105 +197,114 @@
   "tickets": [
     {
       "id": "T-1",
-      "title": "Фильтр Lager в AuftraegeList + параметр URL",
+      "title": "Фильтр Lager в списке заказов + параметр URL + склад по умолчанию из профиля",
       "requirements": [
         "R-1",
         "R-3"
       ],
       "depends_on": [],
       "acceptance": [
-        "фильтр переживает перезагрузку"
+        "фильтр сохраняется в URL",
+        "без параметра берётся склад из профиля"
       ],
       "status": "in_progress",
       "url": null
     },
     {
       "id": "T-2",
-      "title": "Проверка права lager:read в RLS-политике и UI",
+      "title": "Право lager:read: список складов на сервере и скрытие контрола в UI",
       "requirements": [
         "R-2"
       ],
       "depends_on": [
         "T-1"
       ],
-      "acceptance": [],
+      "acceptance": [
+        "роль без права не видит контрол",
+        "параметр lager в URL игнорируется без права"
+      ],
       "status": "todo",
       "url": null
     }
   ],
   "log": [
     {
-      "at": "2026-10-26T18:17:47+00:00",
+      "at": "2026-10-27T04:21:59+00:00",
       "phase": "preflight",
       "event": "run created"
     },
     {
-      "at": "2026-10-26T18:17:47+00:00",
+      "at": "2026-10-27T04:21:59+00:00",
       "phase": "preflight",
-      "event": "run updated: constraints"
+      "event": "run updated: constraints, helpers"
     },
     {
-      "at": "2026-10-26T18:17:47+00:00",
+      "at": "2026-10-27T04:21:59+00:00",
       "phase": "preflight",
       "event": "R-1 added"
     },
     {
-      "at": "2026-10-26T18:17:47+00:00",
+      "at": "2026-10-27T04:21:59+00:00",
       "phase": "preflight",
       "event": "R-2 added"
     },
     {
-      "at": "2026-10-26T18:17:47+00:00",
-      "phase": "preflight",
-      "event": "R-3 added"
-    },
-    {
-      "at": "2026-10-26T18:17:47+00:00",
-      "phase": "preflight",
-      "event": "T-1 added for R-1, R-3"
-    },
-    {
-      "at": "2026-10-26T18:17:47+00:00",
-      "phase": "preflight",
-      "event": "T-2 added for R-2"
-    },
-    {
-      "at": "2026-10-26T18:17:47+00:00",
-      "phase": "preflight",
-      "event": "R-1 updated -> planned"
-    },
-    {
-      "at": "2026-10-26T18:17:47+00:00",
-      "phase": "preflight",
-      "event": "R-2 updated -> planned"
-    },
-    {
-      "at": "2026-10-26T18:17:48+00:00",
-      "phase": "preflight",
-      "event": "R-3 updated -> planned"
-    },
-    {
-      "at": "2026-10-26T18:17:48+00:00",
+      "at": "2026-10-27T04:21:59+00:00",
       "phase": "preflight",
       "event": "phase preflight done"
     },
     {
-      "at": "2026-10-26T18:17:48+00:00",
+      "at": "2026-10-27T04:21:59+00:00",
+      "phase": "requirements",
+      "event": "R-3 added"
+    },
+    {
+      "at": "2026-10-27T04:22:42+00:00",
       "phase": "requirements",
       "event": "phase requirements done"
     },
     {
-      "at": "2026-10-26T18:17:48+00:00",
+      "at": "2026-10-27T04:22:42+00:00",
+      "phase": "briefing",
+      "event": "R-1 note added"
+    },
+    {
+      "at": "2026-10-27T04:22:42+00:00",
       "phase": "briefing",
       "event": "phase briefing done"
     },
     {
-      "at": "2026-10-26T18:17:48+00:00",
+      "at": "2026-10-27T04:22:42+00:00",
+      "phase": "spec",
+      "event": "R-1 updated -> specified"
+    },
+    {
+      "at": "2026-10-27T04:22:42+00:00",
+      "phase": "spec",
+      "event": "R-2 updated -> specified"
+    },
+    {
+      "at": "2026-10-27T04:22:42+00:00",
+      "phase": "spec",
+      "event": "R-3 updated -> specified"
+    },
+    {
+      "at": "2026-10-27T04:22:42+00:00",
       "phase": "spec",
       "event": "phase spec done"
     },
     {
-      "at": "2026-10-26T18:17:48+00:00",
+      "at": "2026-10-27T04:22:42+00:00",
+      "phase": "plan",
+      "event": "T-1 added for R-1, R-3"
+    },
+    {
+      "at": "2026-10-27T04:22:42+00:00",
+      "phase": "plan",
+      "event": "T-2 added for R-2"
+    },
+    {
+      "at": "2026-10-27T04:22:42+00:00",
       "phase": "plan",
       "event": "T-1 -> in_progress"
     }

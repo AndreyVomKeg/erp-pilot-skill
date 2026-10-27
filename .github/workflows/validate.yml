@@ -7,10 +7,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - name: Smoke-test pilot.py
+      - name: Unit tests (guards of pilot.py)
+        run: python3 -m unittest discover -s tests -v
+      - name: Smoke-test pilot.py and demo run
         run: |
           set -e
-          D=$(mktemp -d)
+          D=$(mktemp -d)/2026-01-01-ci
           P="python3 erp-pilot/scripts/pilot.py --dir $D"
           $P init --title-ru "CI" --repo owner/repo
           $P req add "r1" --source "ci"
@@ -19,7 +21,9 @@ jobs:
           $P render --out $D/dashboard/index.html
           test -s $D/dashboard/index.html
           grep -q '"schema": 1' $D/state.json
-      - name: Check SKILL.md frontmatter
+          python3 erp-pilot/scripts/pilot.py --dir examples/demo-run check --phase plan
+          python3 erp-pilot/scripts/pilot.py --dir examples/demo-run render --out /tmp/demo.html
+      - name: Check SKILL.md frontmatter and referenced files
         run: |
           python3 - <<'PY'
           import re, sys, pathlib
@@ -29,7 +33,13 @@ jobs:
           name = re.search(r"^name:\s*(\S+)", fm, re.M).group(1)
           assert name == "erp-pilot", f"name {name} != directory erp-pilot"
           assert re.search(r'^description:\s*".{1,1024}"\s*$', fm, re.M), "description must be a quoted string <= 1024 chars"
-          for ref in ["references/phases.md","references/dashboard.md","scripts/pilot.py","scripts/README.md","assets/dashboard/index.html"]:
+          for ref in ["references/phases.md","references/dashboard.md","scripts/pilot.py","scripts/README.md",
+                      "assets/dashboard/index.html","templates/requirements.md","templates/spec.md",
+                      "templates/plan.md","templates/acceptance.md"]:
               assert pathlib.Path("erp-pilot", ref).exists(), f"missing {ref}"
+          for bad in ["trid", "vinigrandi", "AndreyVomKeg"]:
+              for f in pathlib.Path("erp-pilot").rglob("*"):
+                  if f.is_file() and bad.lower() in f.read_text(encoding="utf-8", errors="ignore").lower():
+                      sys.exit(f"project-specific name {bad!r} found in {f}")
           print("frontmatter ok")
           PY

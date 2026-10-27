@@ -5,13 +5,15 @@
 плейсхолдер `__STATE__`. Переключатели: тема (светлая/тёмная, запоминается в `localStorage`), язык RU/EN,
 кнопка «обновить» перезагружает страницу. Таймер активного этапа считается в браузере от `started_at`.
 
-## Публикация
+## Рендер и публикация
 
-1. `python3 scripts/pilot.py render --dir .pilot/<run-id>` → `.pilot/<run-id>/dashboard/index.html`.
+1. `python3 scripts/pilot.py --dir .pilot/<run-id> render` → `.pilot/<run-id>/dashboard/index.html`.
+   Рендер локальный и дешёвый — делай после каждой команды, изменившей состояние.
 2. Опубликуй папку `.pilot/<run-id>/dashboard` как статический сайт (платформенный деплой сайта;
    имя сайта = `title.ru` прогона). При повторной публикации обновляй тот же сайт, а не создавай новый.
 3. Адрес → `pilot.py set --dashboard-url <url>`; он показывается в карточке прогона и в отчёте.
-4. Рендер и публикация — после каждого `phase`, `req`, `ticket` изменения, минимум раз на этап.
+4. Публикуй на каждых воротах, при закрытии этапа и в финале — чтобы в момент любого вопроса к пользователю
+   дашборд был актуален. Между этими точками достаточно локального рендера.
 
 ## Схема `state.json` (schema 1)
 
@@ -25,11 +27,12 @@
     "depth": "normal",
     "started_at": "2026-10-26T18:56:00+01:00",
     "finished_at": null,
-    "repo": "AndreyVomKeg/trid-erp-supabase",
+    "repo": "acme/erp",
     "branch": "pilot/2026-10-26-erp-pilot-check",
     "pr_url": null,
     "dashboard_url": null,
-    "constraints": ["PR-only", "миграции только из main"]
+    "constraints": ["PR-only", "миграции применяет администратор после слияния"],
+    "helpers": {"review": "my-review-skill"}
   },
   "phases": [
     {"id": "preflight", "status": "active", "started_at": "...", "finished_at": null,
@@ -59,9 +62,12 @@
 | `tickets[].status` | `todo` · `in_progress` · `review` · `done` · `dropped` |
 | `run.mode` | `manual` · `semi-automatic` · `automatic` |
 | `run.depth` | `light` · `normal` · `deep` |
+| `run.helpers` | объект `роль → имя навыка`; роли `interview` · `tickets` · `review` · `diagnose` · `design` |
 
 Порядок этапов фиксирован: `preflight, requirements, briefing, spec, plan, development, code_review, acceptance`.
-`pilot.py` не даёт открыть этап, пока предыдущий не `done|skipped`.
+`pilot.py` не даёт открыть этап, пока предыдущий не `done|skipped`, не закрывает этап с пропусками трассировки
+и не даёт пропустить `requirements` и `acceptance`. Переходы `R-n` — только вперёд (`open → specified → planned →
+implemented → verified`), `dropped` из любого статуса с `reason`; назад — `--reopen` с записью в журнал.
 
 ## Тексты карточки этапов (по умолчанию, можно переопределить `--note-ru/--note-en`)
 
