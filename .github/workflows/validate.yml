@@ -43,3 +43,29 @@ jobs:
                       sys.exit(f"project-specific name {bad!r} found in {f}")
           print("frontmatter ok")
           PY
+      - name: Reject invisible / bidi / homoglyph-prone characters
+        # Compensates for the AE4 (mixed-script) suppression in .skillspector-baseline.yaml:
+        # Cyrillic text is fine, hidden control characters are not.
+        run: |
+          python3 - <<'PY'
+          import sys, pathlib, unicodedata
+          BAD = set("​‌‍‎‏‪‫‬‭‮⁠⁡⁢⁣⁤﻿­")
+          hits = []
+          for f in pathlib.Path("erp-pilot").rglob("*"):
+              if not f.is_file() or f.suffix not in {".md", ".py", ".html", ".json", ".yaml", ".yml", ".txt"}:
+                  continue
+              text = f.read_text(encoding="utf-8")
+              for line_no, line in enumerate(text.splitlines(), 1):
+                  for ch in line:
+                      if ch in BAD or unicodedata.category(ch) in ("Cf", "Co", "Cn"):
+                          hits.append(f"{f}:{line_no} U+{ord(ch):04X} {unicodedata.name(ch, '?')}")
+          if hits:
+              sys.exit("hidden characters found:\n" + "\n".join(hits))
+          print("no hidden characters")
+          PY
+      - name: SkillSpector security scan (static, gated by baseline)
+        run: |
+          python3 -m pip install -q "git+https://github.com/NVIDIA/skillspector.git"
+          skillspector scan ./erp-pilot --no-llm \
+            --baseline .skillspector-baseline.yaml \
+            --fail-on-findings --fail-on-incomplete --show-suppressed
