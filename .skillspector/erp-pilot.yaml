@@ -2,7 +2,7 @@
 # Findings listed here are suppressed on future scans; anything NEW is still reported.
 # Glob rules (not fingerprints) are used on purpose: fingerprints break on every edit
 # of the file or every scanner upgrade, glob rules survive both.
-# Re-check: skillspector scan ./erp-pilot --no-llm --baseline .skillspector-baseline.yaml --show-suppressed
+# Re-check: skillspector scan ./erp-pilot --no-llm --baseline .skillspector/erp-pilot.yaml --show-suppressed
 version: 2
 scanner_version: "2.12.0"
 rules:

@@ -43,19 +43,20 @@ jobs:
                       sys.exit(f"project-specific name {bad!r} found in {f}")
           print("frontmatter ok")
           PY
-      - name: Reject invisible / bidi / homoglyph-prone characters
-        # Compensates for the AE4 (mixed-script) suppression in .skillspector-baseline.yaml:
+      - name: Reject invisible / bidi / homoglyph-prone characters (whole repo)
+        # Compensates for the AE4 (mixed-script) suppression in .skillspector/*.yaml:
         # Cyrillic text is fine, hidden control characters are not.
         run: |
           python3 - <<'PY'
           import sys, pathlib, unicodedata
-          BAD = set("​‌‍‎‏‪‫‬‭‮⁠⁡⁢⁣⁤﻿­")
+          BAD = set("\u200b\u200c\u200d\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2060\u2061\u2062\u2063\u2064\ufeff\u00ad")
+          EXT = {".md", ".py", ".html", ".json", ".yaml", ".yml", ".txt", ".js", ".ts", ".sh", ".toml"}
+          SKIP = {".git", "node_modules", ".venv"}
           hits = []
-          for f in pathlib.Path("erp-pilot").rglob("*"):
-              if not f.is_file() or f.suffix not in {".md", ".py", ".html", ".json", ".yaml", ".yml", ".txt"}:
+          for f in pathlib.Path(".").rglob("*"):
+              if not f.is_file() or f.suffix not in EXT or SKIP & set(f.parts):
                   continue
-              text = f.read_text(encoding="utf-8")
-              for line_no, line in enumerate(text.splitlines(), 1):
+              for line_no, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
                   for ch in line:
                       if ch in BAD or unicodedata.category(ch) in ("Cf", "Co", "Cn"):
                           hits.append(f"{f}:{line_no} U+{ord(ch):04X} {unicodedata.name(ch, '?')}")
@@ -63,9 +64,26 @@ jobs:
               sys.exit("hidden characters found:\n" + "\n".join(hits))
           print("no hidden characters")
           PY
-      - name: SkillSpector security scan (static, gated by baseline)
+      - name: SkillSpector security scan (every skill in the repo)
+        # Scans every directory containing SKILL.md. A baseline named
+        # .skillspector/<skill-dir>.yaml, if present, suppresses verified false positives.
         run: |
+          set -u
           python3 -m pip install -q "git+https://github.com/NVIDIA/skillspector.git"
-          skillspector scan ./erp-pilot --no-llm \
-            --baseline .skillspector-baseline.yaml \
-            --fail-on-findings --fail-on-incomplete --show-suppressed
+          mapfile -t SKILLS < <(find . -name SKILL.md -not -path './.git/*' -not -path '*/node_modules/*' -printf '%h\n' | sort)
+          if [ "${#SKILLS[@]}" -eq 0 ]; then echo "::error::no SKILL.md found in repository"; exit 1; fi
+          echo "skills to scan: ${SKILLS[*]}"
+          failed=0
+          for dir in "${SKILLS[@]}"; do
+            name=$(basename "$dir")
+            baseline=".skillspector/$name.yaml"
+            echo "::group::$dir"
+            if [ -f "$baseline" ]; then
+              skillspector scan "$dir" --no-llm --baseline "$baseline" --fail-on-findings --fail-on-incomplete --show-suppressed || failed=1
+            else
+              echo "(no baseline for $name — every finding fails the build)"
+              skillspector scan "$dir" --no-llm --fail-on-findings --fail-on-incomplete || failed=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $failed
