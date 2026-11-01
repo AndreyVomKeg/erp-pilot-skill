@@ -1,0 +1,29 @@
+# SkillSpector baseline for erp-pilot.
+# Findings listed here are suppressed on future scans; anything NEW is still reported.
+# Glob rules (not fingerprints) are used on purpose: fingerprints break on every edit
+# of the file or every scanner upgrade, glob rules survive both.
+# Re-check: skillspector scan ./erp-pilot --no-llm --baseline .skillspector/erp-pilot.yaml --show-suppressed
+version: 2
+scanner_version: "2.12.0"
+rules:
+  - id: "AE4"
+    path: "*.md"
+    message: "*mixed-script*"
+    reason: >-
+      The skill is written in Russian: Cyrillic prose next to Latin code/identifiers
+      triggers the mixed-script heuristic. Verified 2026-11-01: no zero-width, bidi
+      or homoglyph characters in any file. CI additionally rejects invisible/bidi
+      characters (see .github/workflows/validate.yml).
+  - id: "LP3"
+    path: "SKILL.md"
+    reason: >-
+      No 'allowed-tools' by design: SkillSpector itself notes it is a pre-approval list,
+      not a permission ceiling. pilot.py only reads/writes state.json and renders HTML
+      into the run directory; no network, no subprocess.
+  - id: "AST7"
+    path: "scripts/pilot.py"
+    message: "*getattr*"
+    reason: >-
+      getattr(args, key) iterates over a fixed tuple of six argparse attribute names
+      in cmd_set(); the attribute name never comes from user input.
+fingerprints: []
