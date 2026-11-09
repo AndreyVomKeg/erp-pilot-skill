@@ -14,12 +14,6 @@ rules:
       triggers the mixed-script heuristic. Verified 2026-11-01: no zero-width, bidi
       or homoglyph characters in any file. CI additionally rejects invisible/bidi
       characters (see .github/workflows/validate.yml).
-  - id: "LP3"
-    path: "SKILL.md"
-    reason: >-
-      No 'allowed-tools' by design: SkillSpector itself notes it is a pre-approval list,
-      not a permission ceiling. pilot.py only reads/writes state.json and renders HTML
-      into the run directory; no network, no subprocess.
   - id: "AST7"
     path: "scripts/pilot.py"
     message: "*getattr*"
