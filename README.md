@@ -3,6 +3,7 @@
 [![Skillverdict](https://app.skillverdict.dev/badge/github.com/AndreyVomKeg/erp-pilot-skill/erp-pilot.svg)](https://app.skillverdict.dev/github.com/AndreyVomKeg/erp-pilot-skill/erp-pilot)
 [![KukiLab Scanner](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/kukilab-scan.yml/badge.svg)](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/kukilab-scan.yml)
 [![validate](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/validate.yml)
+[![License: MIT](https://img.shields.io/github/license/AndreyVomKeg/erp-pilot-skill)](LICENSE)
 
 Skill «ERP Pilot» для Perplexity Computer: проводит изменение ERP, учётного или административного портала
 (любой репозиторий с базой данных, правами доступа и веб-клиентом) от брифа до приёмки по восьми этапам —
@@ -58,3 +59,7 @@ ERP Pilot не привязан к конкретным проектам. Есл
 разбивки на тикеты, ревью кода, диагностики или дизайн-системы, в Preflight они записываются по ролям
 (`pilot.py set --helper review=<имя> …`) и используются на соответствующих этапах; иначе работают встроенные
 чек-листы из `references/phases.md`.
+
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE).
