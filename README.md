@@ -1,5 +1,9 @@
 # erp-pilot-skill
 
+[![Skillverdict](https://app.skillverdict.dev/badge/github.com/AndreyVomKeg/erp-pilot-skill/erp-pilot.svg)](https://app.skillverdict.dev/github.com/AndreyVomKeg/erp-pilot-skill/erp-pilot)
+[![KukiLab Scanner](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/kukilab-scan.yml/badge.svg)](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/kukilab-scan.yml)
+[![validate](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/validate.yml)
+
 Skill «ERP Pilot» для Perplexity Computer: проводит изменение ERP, учётного или административного портала
 (любой репозиторий с базой данных, правами доступа и веб-клиентом) от брифа до приёмки по восьми этапам —
 Preflight → Requirements → Briefing → Spec → Plan → Development → Code review → Acceptance — со сквозной
