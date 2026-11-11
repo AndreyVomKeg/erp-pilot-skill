@@ -1,6 +1,7 @@
 # erp-pilot-skill
 
 [![Skillverdict](https://app.skillverdict.dev/badge/github.com/AndreyVomKeg/erp-pilot-skill/erp-pilot.svg)](https://app.skillverdict.dev/github.com/AndreyVomKeg/erp-pilot-skill/erp-pilot)
+[![KukiLab](https://kukilab.dev/badge/github.com/AndreyVomKeg/erp-pilot-skill/erp-pilot.svg)](https://kukilab.dev/?check=https%3A%2F%2Fgithub.com%2FAndreyVomKeg%2Ferp-pilot-skill%2Ftree%2FHEAD%2Ferp-pilot)
 [![KukiLab Scanner](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/kukilab-scan.yml/badge.svg)](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/kukilab-scan.yml)
 [![validate](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/validate.yml/badge.svg)](https://github.com/AndreyVomKeg/erp-pilot-skill/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/github/license/AndreyVomKeg/erp-pilot-skill)](LICENSE)
