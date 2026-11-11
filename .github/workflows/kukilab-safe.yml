@@ -1,0 +1,24 @@
+# KukiLab SAFE: полный прогон сканера (Step 0, Step 1 и смысловой проход Step 2 через API Anthropic)
+# на основной ветке. При вердикте SAFE рабочий процесс сообщает результат на kukilab.dev, и бейдж
+# навыка в README меняется со STATIC PASSED на SAFE для этого коммита.
+#
+# СЕКРЕТ (обязателен): ANTHROPIC_API_KEY → Settings → Secrets and variables → Actions.
+# Ключ используется только здесь, в GitHub Actions; на kukilab.dev он не передаётся.
+name: KukiLab SAFE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  safe:
+    uses: kukilab/scanner/.github/workflows/safe.yml@v1
+    with:
+      path: erp-pilot
+    secrets:
+      anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
