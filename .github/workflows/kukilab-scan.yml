@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  KukiLab Scanner — проверка AI-навыка при каждом push / pull_request
+#
+#  КУДА ПОЛОЖИТЬ: в репозиторий ПРОВЕРЯЕМОГО НАВЫКА по пути
+#      .github/workflows/kukilab-scan.yml
+#  СЕКРЕТ (опционально): ANTHROPIC_API_KEY → Settings → Secrets and variables → Actions
+#  Без ключа Step 2 работает в офлайн-режиме (эвристики P-01/P-02/P-09, en/ru/de).
+# ─────────────────────────────────────────────────────────────────────────────
+name: KukiLab Scanner
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write      # загрузка SARIF в Security → Code scanning
+  actions: read
+
+jobs:
+  kukilab:
+    name: KukiLab Step 0 / 1 / 2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: KukiLab Scanner
+        id: kukilab
+        uses: kukilab/scanner@v1
+        continue-on-error: true
+        with:
+          path: erp-pilot                  # скилл лежит в подпапке (папка = name в SKILL.md)
+          fail-on: BLOCK
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.kukilab.outputs.sarif }}
+          category: kukilab-scanner
+
+      - name: Upload reports as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kukilab-scanner-report
+          path: |
+            kukilab.sarif
+            kukilab.json
+            kukilab-report.md
+
+      - name: Fail on BLOCK verdict
+        if: steps.kukilab.outcome == 'failure'
+        run: |
+          echo "::error::KukiLab verdict: ${{ steps.kukilab.outputs.verdict }} (${{ steps.kukilab.outputs.risk-score }}/100)"
+          exit 1
