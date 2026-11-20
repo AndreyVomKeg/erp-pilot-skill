@@ -4,7 +4,7 @@ description: "Провести изменение ERP, учётного или �
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 metadata:
   author: vom-keg
-  version: '0.3.1'
+  version: '0.3.2'
   language: ru
 ---
 
@@ -48,7 +48,8 @@ metadata:
    `pilot.py set --helper role=имя`. Если в репозитории есть план развития (например `docs/ENTWICKLUNGSPLAN.md`,
    `ROADMAP.md`), назови этап и шаг, к которому относится бриф, и запиши ограничение
    `pilot.py set --constraint "План: этап N, шаг N.m (<файл>); вне шага → proposed и Parkplatz"`; если бриф не ложится
-   ни на один шаг — спроси пользователя до Requirements. Ветка `pilot/<run-id>` от основной, `pilot.py init`,
+   ни на один шаг — спроси пользователя до Requirements. Если есть реестр слоёв (`docs/SCHICHTEN.md`), назови слой
+   брифа — `--constraint "Schicht: …"`; смена слоя темы — вопрос Briefing. Ветка `pilot/<run-id>` от основной, `pilot.py init`,
    `render`, публикация дашборда как сайта, адрес → `pilot.py set --dashboard-url`. Этап закрыт, когда пользователь
    видит дашборд.
 2. **Requirements.** Бриф → атомарные `R-1…R-n` с источником через `pilot.py req add`; таблица в `requirements.md`.

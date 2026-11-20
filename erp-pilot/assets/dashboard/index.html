@@ -121,7 +121,7 @@
   var S = JSON.parse(document.getElementById('state').textContent);
   var I18N = {
     ru:{started:'начат', today:'сегодня в', ahead:'впереди', done:'готово', skipped:'пропущен', active:'идёт',
-        inPhase:'в «%s»', req:'Требования', tickets:'Тикеты', run:'Прогон', log:'Журнал',
+        inPhase:'в «%s»', total:'всего по прогону', req:'Требования', tickets:'Тикеты', run:'Прогон', log:'Журнал',
         thId:'№', thText:'Требование', thSt:'Статус', thTk:'Тикеты', thTitle:'Задача', thReq:'Треб.',
         empty:'Пока пусто — появится на этапе «%s».', repo:'Репозиторий', branch:'Ветка', pr:'PR',
         dash:'Дашборд', constraints:'Ограничения', helpers:'Навыки проекта', finished:'завершён', mode:'Режим', depth:'Глубина',
@@ -131,7 +131,7 @@
         rst:{open:'открыто',specified:'в спеке',planned:'в плане',implemented:'сделано',verified:'принято',dropped:'снято'},
         tst:{todo:'в очереди',in_progress:'в работе',review:'на ревью',done:'готово',dropped:'снят'}},
     en:{started:'started', today:'today at', ahead:'ahead', done:'done', skipped:'skipped', active:'now',
-        inPhase:'in “%s”', req:'Requirements', tickets:'Tickets', run:'Run', log:'Log',
+        inPhase:'in “%s”', total:'whole run', req:'Requirements', tickets:'Tickets', run:'Run', log:'Log',
         thId:'#', thText:'Requirement', thSt:'Status', thTk:'Tickets', thTitle:'Ticket', thReq:'Req.',
         empty:'Nothing yet — appears in the “%s” phase.', repo:'Repository', branch:'Branch', pr:'PR',
         dash:'Dashboard', constraints:'Constraints', helpers:'Project skills', finished:'finished', mode:'Mode', depth:'Depth',
@@ -173,7 +173,7 @@
     var cur=a||(last.status==='done'?last:S.phases[0]);
     var note=cur.note[lang]||cur.note.ru||['',''];
     var h='<div><div class="label"><span class="dot"></span>'+esc(T.phase[cur.id])+'</div><h2>'+esc(note[0])+'</h2><p>'+esc(note[1]||'')+'</p></div>'+
-          '<div class="timer"><div class="t" id="timer">0:00</div><div class="in">'+esc(fmt(T.inPhase,T.phase[cur.id]))+'</div></div>'+
+          '<div class="timer"><div class="t" id="timer">0:00</div><div class="in">'+esc((a||last.status!=='done')?fmt(T.inPhase,T.phase[cur.id]):T.total)+'</div></div>'+
           '<div class="phases">'+S.phases.map(function(p){
             var sub;
             if(p.status==='active') sub='<span data-ph-timer>0:00</span>';
