@@ -19,7 +19,8 @@ rules below are not optional.
        skillspector scan ./<skill> --no-llm --baseline .skillspector/<skill>.yaml --fail-on-findings
 
    (omit `--baseline` if the skill has no baseline yet). Install with
-   `pip install git+https://github.com/NVIDIA/skillspector.git` if missing.
+   `pip install git+https://github.com/NVIDIA/skillspector.git@02894ec5b8a0a70637df5a6b45763de92940cedd`
+   if missing (the same pinned commit as in `.github/workflows/validate.yml`).
 3. Push to a branch and open a pull request. Do not push to `main` directly —
    `main` is protected and requires the `validate` check to pass.
 
