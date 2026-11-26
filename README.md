@@ -14,6 +14,7 @@ Preflight → Requirements → Briefing → Spec → Plan → Development → Co
 ```
 erp-pilot/                 # сам skill (папка = name в SKILL.md)
   SKILL.md                 # хаб: режимы, глубина, 8 шагов, границы
+  references/kurzweg.md    # короткий путь для мелкой правки кода: шаги и стоп-условия
   references/phases.md     # чек-лист Preflight, вход/выход этапов, таблица глубины, чек-лист ревью
   references/dashboard.md  # схема state.json, тексты этапов RU/EN, публикация дашборда
   scripts/pilot.py         # CLI состояния прогона (stdlib) с защитами; scripts/README.md — команды и правила
