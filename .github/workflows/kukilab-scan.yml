@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  KukiLab Scanner — проверка AI-навыка при каждом push / pull_request
+#
+#  КУДА ПОЛОЖИТЬ: в репозиторий ПРОВЕРЯЕМОГО НАВЫКА по пути
+#      .github/workflows/kukilab-scan.yml
+#  Ключ API сканеру не передаётся: Step 2 работает в офлайн-режиме (эвристики P-01/P-02/P-09, en/ru/de).
+#  Все actions закреплены по хэшу коммита; при обновлении менять хэш и комментарий с версией.
+# ─────────────────────────────────────────────────────────────────────────────
+name: KukiLab Scanner
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write      # загрузка SARIF в Security → Code scanning
+  actions: read
+
+jobs:
+  kukilab:
+    name: KukiLab Step 0 / 1 / 2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: KukiLab Scanner
+        id: kukilab
+        uses: kukilab/scanner@f7c5c3fd7845b7eb8eea0d85254f96691c135ec6 # v1
+        continue-on-error: true
+        with:
+          path: erp-pilot                  # скилл лежит в подпапке (папка = name в SKILL.md)
+          fail-on: BLOCK
+          no-llm: 'true'
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3
+        with:
+          sarif_file: ${{ steps.kukilab.outputs.sarif }}
+          category: kukilab-scanner
+
+      - name: Upload reports as artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kukilab-scanner-report
+          path: |
+            kukilab.sarif
+            kukilab.json
+            kukilab-report.md
+
+      - name: Fail on BLOCK verdict
+        if: steps.kukilab.outcome == 'failure'
+        run: |
+          echo "::error::KukiLab verdict: ${{ steps.kukilab.outputs.verdict }} (${{ steps.kukilab.outputs.risk-score }}/100)"
+          exit 1
